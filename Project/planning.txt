@@ -1,0 +1,228 @@
+Document for planning and mapping this project
+
+
+3/22/26
+
+In our working example, we must display each state in its full unsimplified form ... so no nesting
+We should have more flexibility when working with syntax
+
+We will need two types of vectors: 
+    
+
+(state W (superposition (state W) (state B))) = W{W, B} ?
+
+
+(superposition (state W B) (state W W))
+    - states must all have the same number of qubits in them, as each represents an entire possible state 
+        of the system
+    - this example is {WB, WW} or W{B, W}
+    - but can we represent this directly as W{B, W}?
+
+(state W (superposition W B))
+    - once we "move down" a level into a superposition when it's nested like this, we are only working with that
+        particular superposition
+    - ex: in W{W, B}, our superposition is only concerned with the latter qubits
+    - how about states with more qubits?
+
+W{WB, BW} ==> either WWB or WBW
+(state W (superposition (state W B) (state B W)))
+    - if we operate like this, we need to adjust our target
+    - H1(W{WB, BW}) ==> W{WB, BB, WW, bW} ==> W{W{W, B}, {W, b}B}
+    - order:
+        - (hadamard (state W (superposition (state W B) (state B W))) 1)
+        - (hadamard (superposition (state W B) (state B W)) 0)   ;sub 1 from target, b/c first qubit
+            does not need to be operated on
+        - (hadamard (state W B) 0) (hadamard (state B W) 0)   ; separate into two instances of hadamard 
+            operation for each superposition, return resultant states
+        - (superposition (state (superposition W B) B) (state (superposition W b) W))  ; now, we have two outcomes 
+            from each of our hadamards, so we superimpose them
+        - (state W (superposition (state (superposition W B) B) (state (superposition W b) W)))  ; finally, we insert 
+            the superposition back where it belongs in the original state
+            this directly translates to W {{W, B} B, {W, b} W}
+
+Grammar
+state ==> (state x ...) where x is:
+    - W
+    - B
+    - w
+    - b
+    - (superposition y ...)
+
+superposition ==> (superposition y ...) where y is:
+    - W 
+    - B 
+    - w 
+    - b 
+    - (state x ...)
+
+So:
+    - states can contain superpositions, representing possible substates 
+    - superpositions contain states, each of which are a possible outcome 
+    - this system needs some more testing!
+
+
+3/23/26
+
+Data structures have been set up successfully
+    - superpositions and states are structs containing vectors, which have state information
+        - so, it ends up looking more like (state '#(W B))
+        - ex: 
+            (state W (superposition (state W B) (state B W))) 
+            ==>
+            (state (vector 'W (superposition (vector (state '#(W B)) (state '#(B W))))))
+        - I put some time into making a function that would display this more cleanly, but i haven't figured it
+            out yet - there are more parenthesis here than I really want to see, but this is functional for now
+    - they are vectors so we can quickly access individual members of each state/superposition... to me, this is 
+        worth the clunky looking output - although once again, ideally we'd clean this up
+    - in our proof of concept, we had to use both lists and vectors to distinguish between states and superpositions,
+        but now we can use struct predicates which is nice
+        - however... we're finding that currently, the predicates only work at runtime... which is not ideal, because
+            if we keep it this way we'll have to turn each gate into fully expanded code 
+        - if it comes to that then it's fine, but we'll see if there's other options 
+
+the long and short of it is that the user interfaces with structs via functions provided in the def file
+
+3/25 
+
+Haven't done any work on this today, but just wanted to give some thoughts on the current state of this project
+
+So far, it's simply an interface through which we can interact with racket structs. As we build out gate operations 
+and circuits, some real functionality will emerge. Honestly, I think this whole thing could be implemented in pure racket 
+(and perhaps more efficiently) but regardless making some s-exp language specifically for misty states is an interest
+of mine. Maybe as we go, we'll discover some justification as to why this has to be its own language
+
+I suppose a supporting argument I'd make is that working with this s-exp language in its final state will make it
+simpler for the programmer to interact with quantum states by just using the syntax of our language. In our proof
+of concept, there was some overhead in dealing with vectors and lists and working within the bounds of racket. So,
+there's at the very least merit in simplifying user experience.
+
+
+3/29
+
+Now that the core is built out, I think it's time we discuss how circuits will be modelled.
+
+(operate <in-state> <circ>)
+
+(circ wire ...)
+    - we will pass in a list of wires that represent each wire in the circuits
+
+(wire gate ...)
+    - and each wire will consist of a series of gates like this
+    - these gates will not be our actual gate functions (as those need states to function), they'll instead be 
+        s-exps which will be parsed to generate the actual gate functions   
+
+ex of expansion:
+    - (operate WW (circ (wire 0 identity CNOT:T) (wire 1 hadamard CNOT:C)))
+        ==>
+    - (CNOT (hadamard (identity WW) 1) 1 0)
+
+How will this work? More in detail
+    - grab state from operate function
+    - find first gate on each wire
+        - in this case, identity and hadamard 
+        - apply in arbitrary order, as these are independent gates
+        - so: (hadamard (identity WW) 1)
+    - now, we have CNOT:T and CNOT:C on both
+        - we can grab wire numbers from given wires
+        - whatever processing function we use will recieve input in the form (circ (wire 0 CNOT:T) (wire 1 CNOT:C))
+            - scan with catch function (circ wire ...)
+        - we see we have CNOT:T and CNOT:C,
+
+
+Ok I'm realizing this system isn't gonna work so let's try something else 
+
+A more iterative structure:
+    - (operate WW (circ (hadamard 0) (CNOT 0 1)))
+    - catch circuits with: (operate state (circ gates ...))
+        - for each gate:
+            - generate (<gate> state)
+            - ex for CNOT: 
+                - (CNOT 0 1) ==> (CNOT state 0 1)
+            - ex for H => CNOT as above:
+                - (circ (hadamard 0) (CNOT 0 1)) ==> (CNOT (hadamard state 0) 0 1)
+            - after each gate evaluation in the for loop, update state to be (<gate> state)
+                - state = WW, (circ (hadamard 0) (CNOT 0 1)) --> 
+                - state = (hadamard WW 0), (circ (CNOT 0 1)) -->
+                - state = (CNOT (hadamard WW 0) 0 1), return evaluation!
+
+Bottom line - cause of how circuits work, it's much better to have more of a linear/iterative approach
+to circuits, to generate a recursive state evaluation
+
+
+3/30
+
+scratch work while working on hadamard gate
+
+(hadamard (state W B) 1)
+==>
+(state W (superposition W b))
+
+
+(hadamard (state (superposition W B)) 0)
+==>
+(state (superposition W B W b))
+
+
+WWW = (state W W W)
+
+(hadamard (state W W W) 0)
+==>
+(state (superposition W B) W W)
+
+(hadamard (state (superposition W B) W W) 1)
+==>
+(state (superposition W B) (superposition W B) W)
+
+(CNOT (state (superposition W B) (superposition W B) W) 1 2)
+==>
+(state (superposition W B) (superposition (state W W) (state B B)))
+
+(hadamard (state W (superposition (state W B) (state W B))) 2)
+==>
+(state W (superposition ))
+
+(state W (superposition (state B W) (state W W))) 
+==>
+(superposition (state W B W) (state W W W))
+
+
+4/6
+Lots of work was done today!
+
+1. in the past week, we finished hadamard, X, Z, and CNOT
+2. also, state structs are updated to include phase info, one per state
+    - this will make collapsing waveforms much easier, as we can just check
+    - marking is done with a for loop through each state that simply toggles the value for every negative 
+        qubit found
+3. finally, because state calculations are done on a tree of states, the final step in state calculation is to 
+    flatten this tree
+    - this will make it easier to normalize states
+
+To do at this point:
+    - CZ gate
+    - circuit data structure 
+    - normalization
+    - debugging
+
+
+
+
+
+((W W) (B W) (W B) (B B) (W w) (B w) (W B) (B B) 
+(w W) (B W) (w B) (B B) (W W) (b W) (W b) (b b)
+(W W) (B W) (W B) (B B) (W w) (B w) (W B) (B B)
+(W W) (b W) (W B) (b B) (w W) (B W) (w b) (B b)
+(W W) (B W) (W B) (B B) (W W) (B W) (W b) (B b)
+(w W) (B W) (w B) (B B) (W w) (b w) (W B) (b B)
+(w w) (b w) (w b) (b b) (w w) (b w) (w B) (b B)
+(w w) (B w) (w b) (B b) (W W) (b W) (W b) (b b))
+
+4/20
+
+WF collapse is done! I've modelled grover search successfully, so I think things are looking solid
+
+Unfortunately, for the sake of having good-looking output, we've foregone modelling numbers or exact probabilities... 
+this certainly isn't ideal, but this wasn't build to include coefficients at a base level so this is 
+satisfactory for our purposes
+
+Also, this runs far too slowly.. gonna have to work on this, but it by nature may not be a quick program
