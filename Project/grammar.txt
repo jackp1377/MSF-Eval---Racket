@@ -1,0 +1,30 @@
+initializer
+(make-state <qubit> ...)
+(make-superposition <state> ...)
+	- given qubits/states as inputs, construct new states/superpositions 
+
+gate
+(<gate> <in-state> <control qubit> <target qubit>)
+(<gate> <in-state> <target qubit>)
+	- run a gate operation on some input state
+	- control qubit is omitted if it's not necessary 
+
+
+circuit
+(circuit <in-state> gate ...) 
+	- re-organizes input gates into a nested operation on the input state
+
+(define <name> <in-state>)
+	- same as racket define
+
+<gate>: X, CNOT, Z, CZ, Hadamard
+<in-state>: any initializer, gate operation, or circuit - all will return valid quantum states
+<control/target qubit>: any integer, from 0 to n-1 where n is the amount of wires in a circuit
+	- this will tell gate operations which specific qubits to operate with
+<qubit>: W, B, b, or w
+	- W = |0>, B = |1>, w = -|0>, b = -|1>
+<name>: any identifier
+
+There are more syntaxes defined, but these are the ones users are expected to actually interact with
+A lot of the helper syntaxes are accessible by the user, but none are necessary for using the language
+

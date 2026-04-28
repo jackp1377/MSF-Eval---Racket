@@ -370,7 +370,6 @@
                 #`(let ((#,vec-name (vector))) (letrec ((loop
                     (lambda (current)
                         (match current 
-                            
                             ((state _ _) 
                                 (vector-add! #,vec-name current))
                             ((superposition sup-vec)
@@ -378,7 +377,6 @@
                             ((vector vecs syntax/ellipses)
                                 (begin (for ((s vecs)) (loop s))))
                             (_ 
-                                ; (println current)
                                 current)))))
                     (begin (loop in-super) (superposition #,vec-name))))))))
 
