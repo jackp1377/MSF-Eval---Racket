@@ -128,7 +128,9 @@
 
 (pretty-print DJ-b)
 
+(define phase-kickback (circuit (make-state W B) (hadamard 0) (hadamard 1) (CNOT 0 1) (hadamard 0) (hadamard 1)))
 
+(pretty-print phase-kickback)
 
 ; (pretty-print (CNOT (hadamard (make-state W W) 0) 0 1))
 ; (pretty-print (hadamard (hadamard (CZ (hadamard (hadamard (make-state W W) 0) 1) 0 1) 0) 1))
