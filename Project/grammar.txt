@@ -28,3 +28,14 @@ circuit
 There are more syntaxes defined, but these are the ones users are expected to actually interact with
 A lot of the helper syntaxes are accessible by the user, but none are necessary for using the language
 
+
+
+Brief description:
+
+This project provides a way of representing quantum states using Terry Rudolph's misty state formalism, and allows 
+one to construct circuits and evaluate them in this formalism. More complex quantum states and operations cannot 
+be represented, as the formalism itself was originally not intended to include anything more complex than white and black
+dots, so this is more meant to serve as a teaching/visualization tool as well as a way of checking one's work when working
+with this stuff by hand. 
+
+I wouldn't say this has a lot of applications outside its very specific niche, but it was a fun project!
