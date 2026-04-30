@@ -109,7 +109,6 @@
 (define grover-search-BB (circuit grover-oracle-BB (hadamard 1) (hadamard 0) (Z 0) (Z 1) (CZ 0 1) (hadamard 0) (hadamard 1)))
 
 (pretty-print grover-search-WB)
-
 (pretty-print grover-search-BB)
 
 ; add deutsch-jozca and entanglement swapping
