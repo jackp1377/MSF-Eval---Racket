@@ -108,8 +108,8 @@
 
 (define grover-search-BB (circuit grover-oracle-BB (hadamard 1) (hadamard 0) (Z 0) (Z 1) (CZ 0 1) (hadamard 0) (hadamard 1)))
 
-(pretty-print grover-search-WB)
-(pretty-print grover-search-BB)
+(state-print grover-search-WB)
+(state-print grover-search-BB)
 
 ; add deutsch-jozca and entanglement swapping
 
@@ -123,13 +123,19 @@
 
 (define DJ-b (circuit oracle-DJ-balanced (hadamard 0) (hadamard 1)))
 
-(pretty-print DJ-ub)
+(state-print DJ-ub) 
 
-(pretty-print DJ-b)
+(state-print DJ-b)
 
 (define phase-kickback (circuit (make-state W B) (hadamard 0) (hadamard 1) (CNOT 0 1) (hadamard 0) (hadamard 1)))
 
-(pretty-print phase-kickback)
+(state-print phase-kickback)
+
+(state-ref (make-state W) 0)
+
+(hadamard (make-state W) 0)
+
+
 
 ; (pretty-print (CNOT (hadamard (make-state W W) 0) 0 1))
 ; (pretty-print (hadamard (hadamard (CZ (hadamard (hadamard (make-state W W) 0) 1) 0 1) 0) 1))
