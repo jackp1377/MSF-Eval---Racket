@@ -110,6 +110,7 @@
 
 (state-print grover-search-WB)
 (state-print grover-search-BB)
+; grover-search-BB
 
 ; add deutsch-jozca and entanglement swapping
 
@@ -129,11 +130,11 @@
 
 (define phase-kickback (circuit (make-state W B) (hadamard 0) (hadamard 1) (CNOT 0 1) (hadamard 0) (hadamard 1)))
 
-(state-print phase-kickback)
+; (state-print phase-kickback)
 
 (state-ref (make-state W) 0)
 
-(hadamard (make-state W) 0)
+(X (hadamard (make-state W) 0) 0)
 
 
 

@@ -1,6 +1,6 @@
 #lang racket
 
-(require  racket/match racket/list)
+(require  racket/match racket/list data/gvector)
 
 (provide state superposition state-ref super-ref is-state? is-W? state-print
     hadamard X CNOT Z fill-negative flatten-superposition is-eq?  CZ  )
@@ -9,11 +9,11 @@
 (struct superposition (vec) #:transparent)
 
 (define (state-ref state mem)
-  (vector-ref (state-vec state) mem))
+  (gvector-ref (state-vec state) mem))
 
 (define super-ref
     (lambda (superposition mem)
-        (vector-ref (superposition-vec superposition) mem)))
+        (gvector-ref (superposition-vec superposition) mem)))
 
 (define is-state?
     (lambda (thingie)
@@ -33,9 +33,9 @@
 
 (define (is-eq? state1 state2)
    (let loop ([counter 0])
-     (if (eq? counter (vector-length (state-vec state1)))
+     (if (eq? counter (gvector-count (state-vec state1)))
          #t
-         (if (is-eq-micro? (vector-ref (state-vec state1) counter) (vector-ref (state-vec state2) counter))
+         (if (is-eq-micro? (gvector-ref (state-vec state1) counter) (gvector-ref (state-vec state2) counter))
              (loop (+ 1 counter))
             #f))))
 
@@ -43,7 +43,7 @@
     (lambda (to-print)
         (letrec ((loop
                     (lambda (current)
-                        ; (println current)
+                        ; (  current)
                         (match current
                             ((superposition sup-vec)
                                 (remove-duplicates (for/list ((v sup-vec) #:unless (eq? v (void)))
@@ -53,23 +53,23 @@
                             (_ current)))))
                     (loop to-print))))
 
-(define vector-set
-    (lambda (vec new-thing pos)
-        (begin
-                    (let ((v (vector-copy vec)))
-                        (vector-set! v pos new-thing)
-                        v))))
+; (define vector-set
+;     (lambda (vec new-thing pos)
+;         (begin
+;                     (let ((v (gvector-copy vec)))
+;                         (gvector-set! v pos new-thing)
+;                         v))))
 
 
 (define hadamard->collapse
     (lambda (in-state vec)
         (letrec ((loop-2 
                     (lambda (curr-state curr-vec)
-                        (if (>= curr-vec (vector-length vec))
-                            (superposition (vector))
-                            (if (eq? (vector-ref vec curr-vec) (void))
+                        (if (>= curr-vec (gvector-count  vec))
+                            (superposition (make-gvector))
+                            (if (eq? (gvector-ref vec curr-vec) (void))
                                 (loop-2 curr-state (+ curr-vec 1)) 
-                                (scan-collapse-outer (loop-2 curr-state (+ curr-vec 1)) (vector-ref vec curr-vec)))
+                                (scan-collapse-outer (loop-2 curr-state (+ curr-vec 1)) (gvector-ref vec curr-vec)))
                     )
                 )))
                  (loop-2 in-state 0))))
@@ -77,41 +77,38 @@
 (define hadamard
     (lambda (in-state targ)
         
-                (define ret (vector))
+                (define ret (gvector))
                 (letrec ((loop 
                     (lambda (current target frmr)
                         (match current
                         ((state state-vec _)
-                                ; (vector-set! state-vec targ (loop (vector-ref state-vec targ) 0))
-                                (loop (vector-ref state-vec target) target current))
+                                ; (gvector-set! state-vec targ (loop (gvector-ref state-vec targ) 0))
+                                (loop (gvector-ref state-vec target) target current))
                         ((superposition sup-vec)
-                                (superposition (for/vector ((sup sup-vec))
+                                (superposition (for/gvector ((sup sup-vec))
                                     (loop sup target current))))
                         ('W 
                             (begin 
-                                ; (println "arrived")
-                                ; (println (state (vector-set (state-vec frmr) 'B target) #f))
-                                (println ret)
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'B target) #f))
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'W target) #f))
-                                (println ret)
+                               
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'W target) #f))
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'B target) #f))
                                 ))
                         ('B 
                             (begin 
                                 ; (println "arrived")
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'b target) #f))
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'W target) #f))))
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'b target) #f))
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'W target) #f))))
 
                         ('w
                             (begin 
                                 ; (println "arrived")
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'b target) #f))
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'w target) #f))))
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'b target) #f))
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'w target) #f))))
                         ('b 
                             (begin 
                                 ; (println "arrived")
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'B target) #f))
-                                (vector-add! ret (state (vector-set (state-vec frmr) 'w target) #f))))    
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'B target) #f))
+                                (gvector-add! ret (state (gvector-set (state-vec frmr) 'w target) #f))))    
                         
                         ))))
                 (begin
@@ -127,13 +124,13 @@
                     (lambda (current targ frmr)
                         (match current 
                             ((state state-vec _)
-                                (loop (vector-ref state-vec targ) targ state-vec))
+                                (loop (gvector-ref state-vec targ) targ state-vec))
                             ((superposition sup-vec)
-                                (superposition (for/vector ((v sup-vec)) (loop v targ sup-vec))))
-                            ('W (state (vector-set frmr 'B targ) #f))
-                            ('B (state (vector-set frmr 'W targ) #f))
-                            ('w (state (vector-set frmr 'b targ) #f))
-                            ('b (state (vector-set frmr 'w targ) #f))
+                                (superposition (for/gvector ((v sup-vec)) (loop v targ sup-vec))))
+                            ('W (state (gvector-set frmr 'B targ) #f))
+                            ('B (state (gvector-set frmr 'W targ) #f))
+                            ('w (state (gvector-set frmr 'b targ) #f))
+                            ('b (state (gvector-set frmr 'w targ) #f))
                             ))))
                 (loop in-state target '()))
     ))
@@ -141,7 +138,7 @@
 (define CNOT-help
     (lambda (in-state control target)
         (begin
-                    (if (is-B? (vector-ref in-state control))
+                    (if (is-B? (gvector-ref in-state control))
                         (X (state in-state #f) target)
                         (state in-state #f)))))
 
@@ -153,15 +150,15 @@
                                 ((state vec _)
                                     (CNOT-help vec cont targ))
                                 ((superposition sup-vec)
-                                    (superposition (for/vector ((v sup-vec)) (loop v cont targ))))
+                                    (superposition (for/gvector ((v sup-vec)) (loop v cont targ))))
                                 ))))
                 (loop in-state control target))))
 
 (define Z-help
     (lambda (in-vec target)
-        (match (vector-ref in-vec target)
-                    ('B (state (vector-set in-vec 'b target) #f))
-                    ('b (state (vector-set in-vec 'B target) #f))
+        (match (gvector-ref in-vec target)
+                    ('B (state (gvector-set in-vec 'b target) #f))
+                    ('b (state (gvector-set in-vec 'B target) #f))
                     (_ (state in-vec #f)))))
 
 (define Z
@@ -172,7 +169,7 @@
                             ((state vec _)
                                 (Z-help vec tar))
                             ((superposition sup-vec)
-                                (superposition (for/vector ((v sup-vec)) (loop v target)))))))) 
+                                (superposition (for/gvector ((v sup-vec)) (loop v target)))))))) 
                     (loop in-state target))))
 
 (define CZ
@@ -181,9 +178,9 @@
                     (lambda (current)
                         (match current
                             ((superposition sup-vec)
-                                (superposition (for/vector ((v sup-vec)) (loop v))))
+                                (superposition (for/gvector ((v sup-vec)) (loop v))))
                             ((state state-vec _)
-                                (if (and (is-B? (vector-ref state-vec target)) (is-B? (vector-ref state-vec control)))
+                                (if (and (is-B? (gvector-ref state-vec target)) (is-B? (gvector-ref state-vec control)))
                                     (Z current control)
                                     current))
                             (_ 
@@ -205,7 +202,7 @@
                             ((state state-vec _)
                                 (fill-negative-inner current))
                             ((superposition sup-vec)
-                                (superposition (for/vector ((v sup-vec)) (loop v))))))))
+                                (superposition (for/gvector ((v sup-vec)) (loop v))))))))
                     (loop state-in))))
 
 
@@ -227,25 +224,27 @@
         ; (println in-super)
         (scan-collapse (superposition-vec (fill-negative (flatten-superposition in-super))) (fill-negative in-state)) ))
 
-(define vector-remove 
-    (lambda (vec to-remove)
-        ; (println vec)
+; (define vector-remove 
+;     (lambda (vec to-remove)
+;         ; (println vec)
 
-        (list->vector (remove to-remove (vector->list vec)))))
+;         (list->vector (remove to-remove (gvector->list vec)))))
 
-    (define scan-collapse
+(define scan-collapse
     (lambda (in-super in-state)
         (letrec ((collapse-inner
                     (lambda (sup target current)
-                        (if (>= current (vector-length sup))
-                            (vector-add sup target)
-                            (if (eq? (void) (vector-ref sup current))
+                        ; (  sup)
+                        (if (>= current (gvector-count sup))
+                            (begin (gvector-add sup target) )
+                            
+                            (if (eq? (void) (gvector-ref sup current))
                                 (collapse-inner sup target (+ 1 current))
                                 (cond 
-                                    ((eq? (to-collapse? (vector-ref sup current) target) 1)
-                                        (vector-remove sup (vector-ref sup current)))
-                                    ; ((eq? (to-collapse? (vector-ref sup current) target) 2)
-                                    ;     (collapse-inner (vector-remove sup target) target (+ 1 current)))
+                                    ((eq? (to-collapse? (gvector-ref sup current) target) 1)
+                                        (gvector-remove sup (gvector-ref sup current)))
+                                    ; ((eq? (to-collapse? (gvector-ref sup current) target) 2)
+                                    ;     (collapse-inner (gvector-remove sup target) target (+ 1 current)))
                                     (else 
                                         (collapse-inner sup target (+ 1 current)))))))))
                 (superposition (collapse-inner in-super in-state 0)))))
@@ -254,38 +253,38 @@
 ;     (lambda (stx)
 ;         (syntax-parse stx
 ;             ((_ v ta)
-;                 #`(begin  (vector-add! v ta)  v)))))
+;                 #`(begin  (gvector-add! v ta)  v)))))
 
-(define vector-add 
-    (lambda (v ta)
-        (begin  (vector-add! v ta)  v)))
+; (define vector-add 
+;     (lambda (v ta)
+;         (begin  (gvector-add! v ta)  v)))
 
 ; (define-syntax vector-add!
 ;     (lambda (stx)
 ;         (syntax-parse stx
 ;             ((_ vect to-add)
-;                 #'(set! vect (list->vector (append (vector->list vect) (list to-add))))))))
+;                 #'(set! vect (list->vector (append (gvector->list vect) (list to-add))))))))
 
-(define vector-add!
-    (lambda (vect to-add)
-        ; (println vect)
-        ; (println (list->vector (append (vector->list vect) (list to-add))))
-        (set! vect (list->vector (append (vector->list vect) (list to-add))))
-        (println vect)))
+; (define vector-add!
+;     (lambda (vect to-add)
+;         ; (  vect)
+;         ; (  (list->vector (append (gvector->list vect) (list to-add))))
+;         (set! vect (list->vector (append (gvector->list vect) (list to-add))))
+;         (  vect)))
 
 ; (define-syntax flatten-superposition
 ;     (lambda (stx)
 ;         (syntax-parse stx
 ;             ((_ in-super)
 ;                 (define vec-name (format-id stx "~a" (gensym 'vec)))
-;                 #`(let ((#,vec-name (vector))) (letrec ((loop
+;                 #`(let ((#,vec-name (gvector))) (letrec ((loop
 ;                     (lambda (current)
 ;                         (match current 
 ;                             ((state _ _) 
-;                                 (vector-add! #,vec-name current))
+;                                 (gvector-add! #,vec-name current))
 ;                             ((superposition sup-vec)
 ;                                 (begin (for ((s sup-vec)) (loop s))))
-;                             ((vector vecs syntax/ellipses)
+;                             ((gvector vecs syntax/ellipses)
 ;                                 (begin (for ((s vecs)) (loop s))))
 ;                             (_ 
 ;                                 current)))))
@@ -293,15 +292,18 @@
 
 (define flatten-superposition 
     (lambda (in-super)
-        (let ((vec-name (vector))) (letrec ((loop
+        (let ((vec-name (make-gvector))) (letrec ((loop
                     (lambda (current)
                         (match current 
                             ((state _ _) 
-                                (vector-add! vec-name current))
+                                (gvector-add! vec-name current))
                             ((superposition sup-vec)
                                 (begin (for ((s sup-vec)) (loop s))))
-                            ((vector vecs syntax/ellipses)
-                                (begin (for ((s vecs)) (loop s))))
+                            ((? gvector? current)
+                                (let ((vec (gvector->vector current)))
+                                    (for ((s vec)) (loop s))))
+                            ; ((gvector vecs ...)
+                            ;     (begin (for ((s vecs)) (loop s))))
                             (_ 
                                 current)))))
                     (begin (loop in-super) (superposition vec-name))))))
@@ -317,6 +319,25 @@
 ;                             (set! #,var (toggle-bool #,var))
 ;                             (void)))
 ;                         (state (state-vec in-state) #,var)))))))
+
+(define gvector-set 
+    (lambda (vect new-thing pos)
+        (let ((vec (vector->gvector (vector-copy (gvector->vector vect)))))
+            (gvector-set! vec pos new-thing)
+            ; (println vec)
+            vec)
+    ))
+
+(define gvector-add
+    (lambda (vec ta)
+        (let ((v (vector->gvector (vector-copy (gvector->vector vec)))))
+            (gvector-add! v ta)
+            v)))
+
+(define gvector-remove 
+    (lambda (vec to-remove)
+        (list->gvector (remove to-remove (gvector->list vec)))
+    ))
 
 (define fill-negative-inner
     (lambda (in-state)
